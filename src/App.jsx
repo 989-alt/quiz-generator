@@ -259,11 +259,14 @@ const BlooketGenerator = () => {
   const handleAdd = () => setQuestions(qs => [...qs, { id: Date.now(), question: "새 문제", answers: ["","","",""], correctAnswer: 1, timeLimit: 20 }]);
 
   const downloadCSV = () => {
+    // 1. Blooket Header (Strict format)
     const row1 = '"Blooket\nImport Template",,,,,,,';
     const row2 = 'Question #,Question Text,Answer 1,Answer 2,"Answer 3\n(Optional)","Answer 4\n(Optional)","Time Limit (sec)\n(Max: 300 seconds)","Correct Answer(s)\n(Only include Answer #)"';
     
+    // 2. Data Rows with strict escaping
     const escapeCsv = (text) => {
       if (text === null || text === undefined) return '""';
+      // Double quotes must be escaped as "" inside a quoted string
       return '"' + String(text).replace(/"/g, '""') + '"';
     };
 
@@ -280,12 +283,17 @@ const BlooketGenerator = () => {
       ].join(",");
     });
 
-    const csvContent = [row1, row2, ...rows].join("\n");
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Use CRLF (\r\n) for maximum compatibility with Blooket parser
+    const csvContent = [row1, row2, ...rows].join("\r\n");
+    
+    // 3. Create Blob WITHOUT BOM
+    // WARNING: Removing BOM fixes Blooket infinite loading, but Excel on Windows might show garbled text.
+    // This is a necessary tradeoff for the target platform (Blooket).
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a"); 
     link.href = url; 
-    link.download = `blooket_quiz.csv`; 
+    link.download = `blooket_quiz_v4_fixed.csv`; 
     document.body.appendChild(link); 
     link.click(); 
     document.body.removeChild(link);
@@ -365,9 +373,10 @@ const BlooketGenerator = () => {
                 ))}
               </div>
               <div className="flex justify-center gap-4 pt-6 border-t">
-                <button onClick={downloadCSV} className="bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-full font-bold shadow flex items-center gap-2"><Download className="w-5 h-5"/> CSV 다운로드</button>
+                <button onClick={downloadCSV} className="bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-full font-bold shadow flex items-center gap-2"><Download className="w-5 h-5"/> CSV 다운로드 (Blooket용)</button>
                 <button onClick={copyForExtension} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow flex items-center gap-2 animate-pulse"><Zap className="w-5 h-5 text-yellow-300"/> 매크로 데이터 복사</button>
               </div>
+              <div className="text-center text-xs text-slate-400 mt-2">* CSV 파일은 엑셀에서 열면 한글이 깨져 보일 수 있으나, 블루킷 업로드 시에는 정상 작동합니다.</div>
             </div>
           )}
         </div>
